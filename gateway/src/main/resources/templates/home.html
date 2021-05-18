@@ -1,0 +1,170 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Route</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="shortcut icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQzfVXn8XGuWdStx5q9i5C8QO-Daj4Dv7hAwubHoImaCUWP_6Qs5RiBEh5p_m-jQXSFyOA&usqp=CAU">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=de955db6-3fe5-4854-bee6-cd6929a7a224&lang=ru_RU" type="text/javascript">
+    </script>
+</head>
+<body>
+  <div id="login">
+    Логин:<br>
+    <input type="text" name="username" id="username" placeholder="login" content="admin"/><br>
+    Пароль:<br>
+    <input type="password" name="password" id="password" placeholder="password" content="admin"/><br><br>
+    <input type="button" onclick="on_auth_click()" value="Make authorization"/>
+
+  </div>
+  <div id="input">
+    <input type="text" name="countClusters" id="countClusters" placeholder="Число мерчандайзеров"/>
+    <input type="button" onclick="calculate()" value="Расчитать"/>
+  </div>
+  <div id="inputId">
+    <br>
+    <input type="text" name="idCluster" id="idCluster" placeholder="Определенный кластер"/>
+    <input type="button" onclick="findId()" value="Найти"/>
+    <br>
+  </div>
+  <div id="output">
+    <h3>Кластеры:</h3>
+    <pre id="last_result"></pre>
+    <div id="map" style="width: 100%; height: 800px"></div>
+  </div>
+    <script>
+        var jwtoken;
+        let base_url = "http://localhost:8080"
+        var clusters = [];
+        var myMap;
+        $(function() {
+          $("#login").css("display","block");
+          $("#input").css("display","none");
+          $("#inputId").css("display","none");
+          $("#output").css("display","none");
+        })
+        function on_auth_click(){
+            var username = $("input#username").val();
+            var password = $("input#password").val();
+
+            $.ajax({
+              type: "POST",
+              url: base_url + "/auth-service/auth",
+              data:JSON.stringify({
+                "login": username,
+                "password": password
+              }),
+              beforeSend: function (xhr){
+                xhr.setRequestHeader('Content-Type', 'application/json');
+              },
+              success: function(response){
+                console.log(response);
+                jwtoken = response;
+                $("#login").css("display","none");
+                $("#input").css("display","block");
+              }
+            });
+        }
+        function calculate(){
+            $("#inputId").css("display","block");
+            $("#output").css("display","block");
+            var countClusters = $("input#countClusters").val();
+            $.ajax({
+              type: "GET",
+              url: base_url + "/route-service/clusters/min-size-algo?clusterCount="+countClusters,
+              beforeSend: function (xhr){
+                xhr.setRequestHeader('Authorization', 'Bearer ' + jwtoken);
+              },
+              error: function(xhr, status, error){
+                 var errorMessage = xhr.status + ': ' + xhr.statusText
+                 console.log(errorMessage);
+              },
+              success: function(response){
+                clusters = response;
+                var clusterString = ""
+                for(var cluster = 0; cluster<clusters.length; cluster++){
+                  clusterString += "Кластер " + clusters[cluster].id+": \n";
+                  for(var store = 0; store < clusters[cluster].stores.length; store++){
+                    var _store = clusters[cluster].stores[store];
+                    clusterString+=" "+_store.latitude+", "+_store.longitude+"; " + _store.address + "\n"
+                  }
+                }
+                $("#last_result").text(clusterString);
+                if(myMap != undefined){
+                  myMap.destroy();
+                }
+                ymaps.ready(init);
+              }
+            });
+        }
+
+
+        function findId(){
+            var idCluster = $("input#idCluster").val();
+            $.ajax({
+              type: "GET",
+              url: base_url + "/route-service/clusters/"+idCluster,
+              beforeSend: function (xhr){
+                xhr.setRequestHeader('Authorization', 'Bearer ' + jwtoken);
+              },
+              error: function(xhr, status, error){
+                 var errorMessage = xhr.status + ': ' + xhr.statusText
+                 console.log(errorMessage);
+              },
+              success: function(response){
+                clusters = [];
+                clusters.push(response);
+                var clusterString = ""
+                for(var cluster = 0; cluster<clusters.length; cluster++){
+                  clusterString += "Кластер " + clusters[cluster].id+": \n";
+                  for(var store = 0; store < clusters[cluster].stores.length; store++){
+                    var _store = clusters[cluster].stores[store];
+                    clusterString+=" "+_store.latitude+", "+_store.longitude+"; " + _store.address + "\n"
+                  }
+                }
+                $("#last_result").text(clusterString);
+                if(myMap != undefined){
+                  myMap.destroy();
+                }
+                ymaps.ready(init);
+              }
+            });
+        }
+        function init(){
+            myMap = new ymaps.Map("map", {
+                center: [45.06595135,39.01114225],
+                zoom: 11
+            });
+            var points = [];
+            for(var cluster = 0; cluster<clusters.length; cluster++){
+              var coords = [];
+              for(var store = 0; store < clusters[cluster].stores.length; store++){
+                var _store = clusters[cluster].stores[store];
+                var point = new ymaps.Placemark([_store.latitude,_store.longitude], {
+                  balloonContent: _store.address,
+                  iconCaption: _store.id
+                },
+                {
+                  iconColor: store == 0 ? '#ff0000':'#0f93ff'
+                }
+                );
+                coords.push([_store.latitude,_store.longitude]);
+                myMap.geoObjects.add(point);
+              }
+              var myPolyline = new ymaps.Polyline(
+                  coords,
+                  {
+
+                  },
+                  {
+                    strokeColor: "#000000",
+                    strokeWidth: 4,
+                    strokeOpacity: 0.5
+                  }
+              );
+              myMap.geoObjects.add(myPolyline);
+            }
+        }
+    </script>
+</body>
+</html>

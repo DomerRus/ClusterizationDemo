@@ -145,7 +145,7 @@ public class RouteService {
         ArrayList<ClusterModel> result = new ArrayList<>();
         for(Cluster cluster : clusters){
             ClusterModel clusterModel = new ClusterModel();
-            clusterModel.setId(clusters.indexOf(cluster));
+            clusterModel.setId((long) clusters.indexOf(cluster));
             for(Point point : cluster.getPoints()){
                 clusterModel.getStores().add(stores.get(point.getId()));
             }
