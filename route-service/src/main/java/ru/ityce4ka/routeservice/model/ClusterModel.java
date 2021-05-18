@@ -27,5 +27,8 @@ public class ClusterModel {
             inverseJoinColumns = {@JoinColumn(name = "storeId")})
     private List<StoreModel> stores = new ArrayList<>();
 
+    public ClusterModel(List<StoreModel> stores){
+        this.stores = stores;
+    }
 
 }
