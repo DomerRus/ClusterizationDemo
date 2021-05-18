@@ -1,0 +1,93 @@
+version: "3.8"
+services:
+  db:
+    container_name: db
+    image: postgres:13
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: 896699
+      POSTGRES_USER: postgres
+    volumes:
+      - ./db/db-data:/var/lib/postgresql/data/
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+
+  eureka:
+    container_name: eureka
+    image: eureka:jdk11
+    restart: unless-stopped
+    build: ./eureka
+    ports:
+      - "8761:8761"
+    depends_on:
+      - db
+
+  gateway:
+    container_name: gateway
+    image: gateway:jdk11
+    restart: unless-stopped
+    build: ./gateway
+    environment:
+      PORT: 8080
+      EUREKA_HOST: eureka
+      EUREKA_PORT: 8761
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka
+
+  auth-service:
+    container_name: auth-service
+    image: auth-service:jdk11
+    restart: unless-stopped
+    build: ./auth-service
+    environment:
+      PORT: 8081
+      DB_HOST: db
+      DB_PORT: 5432
+      EUREKA_HOST: eureka
+      EUREKA_PORT: 8761
+    ports:
+      - "8081:8081"
+    depends_on:
+      - eureka
+      - db
+
+  user-service:
+    container_name: user-service
+    image: user-service:jdk11
+    restart: unless-stopped
+    build: ./user-service
+    environment:
+      PORT: 8082
+      DB_HOST: db
+      DB_PORT: 5432
+      EUREKA_HOST: eureka
+      EUREKA_PORT: 8761
+    ports:
+      - "8082:8082"
+    depends_on:
+      - eureka
+      - db
+
+  route-service:
+    container_name: route-service
+    image: route-service:jdk11
+    restart: unless-stopped
+    build: ./route-service
+    environment:
+      PORT: 8083
+      DB_HOST: db
+      DB_PORT: 5432
+      EUREKA_HOST: eureka
+      EUREKA_PORT: 8761
+    ports:
+      - "8083:8083"
+    depends_on:
+      - eureka
+      - db
+
+networks:
+  default:
+    name: "zerotwobestwaifu"

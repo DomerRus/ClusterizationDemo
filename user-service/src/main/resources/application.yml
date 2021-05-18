@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: user-service
+  jpa:
+    show-sql: true
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQL10Dialect
+    generate-ddl: false
+    properties:
+      hibernate:
+        show_sql=true:
+    hibernate:
+      ddl-auto: update
+
+  datasource:
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:896699}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/postgres
+    driver-class-name: org.postgresql.Driver
+
+jwt:
+  secret: zerotwobestwaifu
+
+server:
+  port: ${PORT:8082}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka
+  instance:
+    preferIpAddress: true
